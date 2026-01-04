@@ -427,7 +427,7 @@
             document.getElementById(id).addEventListener('change', updateMapDisplay);
         });
 
-        // --- EXPORT LOGIC (A4 PDF DIRECT NATIVE) ---
+        // --- EXPORT LOGIC (A4 PDF OPTIMIZED) ---
         async function generatePDF() {
             if (!currentData) {
                 alert("Por favor, busca una ciudad o dibuja un área primero.");
@@ -440,21 +440,15 @@
             
             btnText.textContent = "Generando PDF...";
             btnLoader.classList.remove('hidden');
-            updateStatus("Dibujando mapa vectorial...", 20);
+            updateStatus("Iniciando exportación optimizada...", 10);
 
-            // 1. A4 Dimensions in points
             const pdfW = 595.28;
             const pdfH = 841.89;
 
-            // 2. Determine Bounds
             let bounds;
-            if (drawnItems.getLayers().length > 0) {
-                bounds = drawnItems.getBounds();
-            } else {
-                bounds = map.getBounds();
-            }
+            if (drawnItems.getLayers().length > 0) bounds = drawnItems.getBounds();
+            else bounds = map.getBounds();
 
-            // 3. Mercator Logic
             const toWebMercator = (lat, lon) => {
                 const x = (lon * 20037508.34) / 180;
                 let y = Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) / (Math.PI / 180);
@@ -467,8 +461,7 @@
             const mercW = maxM.x - minM.x;
             const mercH = maxM.y - minM.y;
 
-            // 4. Scale for A4
-            const margin = 30; // Better margins for print
+            const margin = 20; 
             const availableW = pdfW - (margin * 2);
             const availableH = pdfH - (margin * 2);
             const scale = Math.min(availableW / mercW, availableH / mercH);
@@ -477,112 +470,98 @@
             const mapH = mercH * scale;
             const offsetX = (pdfW - mapW) / 2;
             const offsetY = (pdfH - mapH) / 2;
+            const baseBottom = pdfH - offsetY;
 
+            // Pre-calculate projection helper
             const project = (lat, lon) => {
                 const merc = toWebMercator(lat, lon);
-                const px = offsetX + (merc.x - minM.x) * scale;
-                const py = (pdfH - offsetY) - (merc.y - minM.y) * scale; 
-                return { x: px, y: py };
+                return {
+                    x: offsetX + (merc.x - minM.x) * scale,
+                    y: baseBottom - (merc.y - minM.y) * scale
+                };
             };
 
-            // 5. Initialize PDF
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-            
             const features = currentData.features;
+
             const showStreets = document.getElementById('checkStreets').checked;
             const showBuildings = document.getElementById('checkBuildings').checked;
             const showWater = document.getElementById('checkWater').checked;
             const showLabels = document.getElementById('checkLabels').checked;
 
-            // Helper to draw a path from coordinates
-            const drawPath = (coords, isClosed, style) => {
-                if (!coords || coords.length < 2) return;
+            // Group features by category in one pass
+            const buckets = { water: [], buildings: [], streets: [], labels: [] };
+            features.forEach(f => {
+                const p = f.properties || {};
+                if (showWater && (p.waterway || p.natural === 'water')) buckets.water.push(f);
+                else if (showBuildings && p.building) buckets.buildings.push(f);
+                else if (showStreets && p.highway) buckets.streets.push(f);
+                if (showLabels && p.name && (p.highway || p.waterway)) buckets.labels.push(f);
+            });
+
+            const drawGroup = (features, style, isClosed) => {
+                if (features.length === 0) return;
                 
-                pdf.setDrawColor(style.stroke || "#000000");
-                pdf.setLineWidth(style.width || 1);
-                
-                if (style.fill) {
-                    pdf.setFillColor(style.fill);
-                }
+                pdf.setLineWidth(style.width);
+                pdf.setDrawColor(style.stroke);
+                if (style.fill) pdf.setFillColor(style.fill);
 
-                const firstPoint = project(coords[0][1], coords[0][0]);
-                pdf.moveTo(firstPoint.x, firstPoint.y);
+                features.forEach(f => {
+                    const type = f.geometry.type;
+                    const coords = f.geometry.coordinates;
 
-                for (let i = 1; i < coords.length; i++) {
-                    const pt = project(coords[i][1], coords[i][0]);
-                    pdf.lineTo(pt.x, pt.y);
-                }
+                    const drawArray = (arr) => {
+                        if (arr.length < 2) return;
+                        const p1 = project(arr[0][1], arr[0][0]);
+                        pdf.moveTo(p1.x, p1.y);
+                        for (let i = 1; i < arr.length; i++) {
+                            const p = project(arr[i][1], arr[i][0]);
+                            pdf.lineTo(p.x, p.y);
+                        }
+                        if (isClosed) {
+                            pdf.closePath();
+                            if (style.fill) pdf.fillAndStroke();
+                            else pdf.stroke();
+                        } else {
+                            pdf.stroke();
+                        }
+                    };
 
-                if (isClosed) {
-                    pdf.closePath();
-                    if (style.fill) pdf.fillAndStroke();
-                    else pdf.stroke();
-                } else {
-                    pdf.stroke();
-                }
+                    if (type === 'LineString') drawArray(coords);
+                    else if (type === 'MultiLineString') coords.forEach(drawArray);
+                    else if (type === 'Polygon') coords.forEach(drawArray);
+                    else if (type === 'MultiPolygon') coords.forEach(poly => poly.forEach(drawArray));
+                });
             };
 
-            // 6. Draw Layers in order: Water -> Buildings -> Streets -> Labels
-            const categories = [
-                { id: 'water', filter: (p) => p.waterway || p.natural === 'water', style: { fill: "#e0f2fe", stroke: "#0ea5e9", width: 0.5 }, active: showWater },
-                { id: 'buildings', filter: (p) => p.building, style: { fill: "#f1f5f9", stroke: "#64748b", width: 0.2 }, active: showBuildings },
-                { id: 'streets', filter: (p) => p.highway, style: { stroke: "#1e293b", width: 1.0 }, active: showStreets }
-            ];
-
-            for (const cat of categories) {
-                if (!cat.active) continue;
-                updateStatus(`Dibujando ${cat.id}...`, 40 + categories.indexOf(cat) * 15);
-                
-                for (const feature of features) {
-                    const props = feature.properties || {};
-                    if (!cat.filter(props)) continue;
-
-                    const type = feature.geometry.type;
-                    const coords = feature.geometry.coordinates;
-
-                    if (type === 'LineString') drawPath(coords, false, cat.style);
-                    else if (type === 'MultiLineString') coords.forEach(line => drawPath(line, false, cat.style));
-                    else if (type === 'Polygon') coords.forEach(ring => drawPath(ring, true, cat.style));
-                    else if (type === 'MultiPolygon') coords.forEach(poly => poly.forEach(ring => drawPath(ring, true, cat.style)));
-                }
-            }
-
-            // 7. Labels (Simple Text)
-            if (showLabels) {
-                updateStatus("Añadiendo nombres...", 90);
-                pdf.setFont("helvetica", "bold");
-                pdf.setFontSize(5);
-                pdf.setTextColor("#475569");
-                
-                for (const feature of features) {
-                    if (feature.properties?.name && (feature.properties.highway || feature.properties.waterway)) {
-                        const type = feature.geometry.type;
-                        const coords = feature.geometry.coordinates;
-                        let labelPoint;
-                        
-                        if (type === 'LineString') labelPoint = coords[Math.floor(coords.length / 2)];
-                        else if (type === 'MultiLineString') labelPoint = coords[0][Math.floor(coords[0].length / 2)];
-                        else if (type === 'Polygon') labelPoint = coords[0][0];
-
-                        if (labelPoint) {
-                            const pt = project(labelPoint[1], labelPoint[0]);
-                            // Avoid drawing labels outside A4 bounds
-                            if (pt.x > 0 && pt.x < pdfW && pt.y > 0 && pt.y < pdfH) {
-                                pdf.text(feature.properties.name, pt.x, pt.y, { align: 'center' });
-                            }
-                        }
-                    }
-                }
-            }
-
-            updateStatus("Finalizando archivo PDF...", 95);
+            updateStatus("Renderizando mapa...", 40);
             
+            // Draw in order
+            drawGroup(buckets.water, { fill: "#e0f2fe", stroke: "#0ea5e9", width: 0.5 }, true);
+            drawGroup(buckets.buildings, { fill: "#f1f5f9", stroke: "#64748b", width: 0.2 }, true);
+            drawGroup(buckets.streets, { stroke: "#1e293b", width: 0.8 }, false);
+
+            if (showLabels && buckets.labels.length > 0) {
+                pdf.setFont("helvetica", "bold");
+                pdf.setFontSize(4);
+                pdf.setTextColor("#475569");
+                buckets.labels.forEach(f => {
+                    const coords = f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates[0];
+                    if (!coords || coords.length === 0) return;
+                    const mid = coords[Math.floor(coords.length / 2)];
+                    const pt = project(mid[1], mid[0]);
+                    if (pt.x > 0 && pt.x < pdfW && pt.y > 0 && pt.y < pdfH) {
+                        pdf.text(f.properties.name, pt.x, pt.y, { align: 'center' });
+                    }
+                });
+            }
+
+            updateStatus("¡Listo!", 100);
             setTimeout(() => {
-                pdf.save(`mapa_direct_a4_${Date.now()}.pdf`);
+                pdf.save(`mapa_pro_a4_${Date.now()}.pdf`);
                 btnText.textContent = "Descargar PDF (A4)";
                 btnLoader.classList.add('hidden');
-                updateStatus("PDF listo", 100);
-            }, 100);
+            }, 50);
         }
     </script>
 </body>
