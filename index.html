@@ -254,7 +254,12 @@
                 
                 if (data && data.length > 0) {
                     const { lat, lon, boundingbox } = data[0];
-                    const bounds = [[boundingbox[0], boundingbox[3]], [boundingbox[1], boundingbox[2]]];
+                    // Nominatim: [min_lat, max_lat, min_lon, max_lon]
+                    // Leaflet: [[lat, lon], [lat, lon]]
+                    const bounds = L.latLngBounds(
+                        [parseFloat(boundingbox[0]), parseFloat(boundingbox[2])],
+                        [parseFloat(boundingbox[1]), parseFloat(boundingbox[3])]
+                    );
 
                     map.flyTo([lat, lon], 15, { duration: 1.5 });
                     await fetchData(bounds);
@@ -558,12 +563,35 @@
             });
 
             try {
-                await pdf.svg(svgElement, {
-                    x: 0,
-                    y: 0,
-                    width: pdfW,
-                    height: pdfH
-                });
+                // Determine which library interface to use
+                const svg2pdfLib = window.svg2pdf;
+                
+                if (svg2pdfLib && typeof svg2pdfLib.svg2pdf === "function") {
+                    await svg2pdfLib.svg2pdf(svgElement, pdf, {
+                        x: 0,
+                        y: 0,
+                        width: pdfW,
+                        height: pdfH
+                    });
+                } else if (typeof window.svg2pdf === "function") {
+                    // Sometimes it's exported directly
+                    await window.svg2pdf(svgElement, pdf, {
+                        x: 0,
+                        y: 0,
+                        width: pdfW,
+                        height: pdfH
+                    });
+                } else if (typeof pdf.svg === "function") {
+                    await pdf.svg(svgElement, {
+                        x: 0,
+                        y: 0,
+                        width: pdfW,
+                        height: pdfH
+                    });
+                } else {
+                    console.error("Libraries missing interface:", { jspdf: window.jspdf, svg2pdf: window.svg2pdf });
+                    throw new Error("No se pudo inicializar la conversión SVG a PDF.");
+                }
 
                 pdf.save(`mapa_pro_a4_${Date.now()}.pdf`);
                 
@@ -572,7 +600,7 @@
                 updateStatus("PDF generado con éxito", 100);
             } catch (err) {
                 console.error("Error generating PDF:", err);
-                alert("Hubo un error al generar el PDF. Revisa la consola.");
+                alert("Error técnico al generar PDF: " + err.message);
                 btnText.textContent = "Error";
                 btnLoader.classList.add('hidden');
             }
