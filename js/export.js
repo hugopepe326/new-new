@@ -16,8 +16,16 @@ async function generatePDF() {
     const pdfW = 595.28;
     const pdfH = 841.89;
 
-    // Get current map bounds for framing
-    const bounds = map.getBounds();
+    // Get current map bounds OR drawn area bounds
+    let bounds;
+    const drawnFeatures = draw.getAll().features;
+    if (drawnFeatures.length > 0) {
+        const b = getDrawBounds(drawnFeatures[0]);
+        bounds = new maplibregl.LngLatBounds(b[0], b[1]);
+    } else {
+        bounds = map.getBounds();
+    }
+    
     const sw = bounds.getSouthWest();
     const ne = bounds.getNorthEast();
 

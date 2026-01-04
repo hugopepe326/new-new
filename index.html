@@ -8,6 +8,7 @@
     <!-- CSS Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -56,6 +57,22 @@
                         </label>
                     </div>
                 </section>
+
+                <!-- Selection Area -->
+                <section>
+                    <h2 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Zona a Enmarcar</h2>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="activateDraw()" class="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-red-400 hover:bg-red-50 transition-all group">
+                            <svg class="w-6 h-6 text-slate-400 group-hover:text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            <span class="text-[10px] font-bold uppercase text-slate-500 group-hover:text-red-600">Dibujar Recorte</span>
+                        </button>
+                        <button onclick="clearSelection()" class="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-black hover:bg-slate-100 transition-all group">
+                            <svg class="w-6 h-6 text-slate-400 group-hover:text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                            <span class="text-[10px] font-bold uppercase text-slate-500 group-hover:text-black">Limpiar</span>
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-3 font-medium leading-tight">Crea un rectángulo para definir el área exacta de tu PDF.</p>
+                </section>
             </div>
 
             <!-- Export Action -->
@@ -88,6 +105,7 @@
 
     <!-- JS Source Scripts -->
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
     <script src="https://unpkg.com/osmtogeojson@3.0.0-beta.5/osmtogeojson.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
