@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GeoExport Studio | City Map B&W A4</title>
+    <title>GeoExport Studio | Print A4 300DPI</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Leaflet CSS & JS -->
@@ -14,6 +14,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <!-- OSMTogeojson -->
     <script src="https://unpkg.com/osmtogeojson@3.0.0-beta.5/osmtogeojson.js"></script>
+    <!-- PDF Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg2pdf.js/2.2.3/svg2pdf.umd.min.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
@@ -33,9 +36,9 @@
         ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
 
         .glass {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-right: 1px solid rgba(0,0,0,0.05);
         }
 
@@ -49,8 +52,29 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        .leaflet-draw-toolbar a { background-color: white; color: black; border-color: #000; }
-        .leaflet-draw-toolbar a:hover { background-color: #000; color: white; }
+        /* Custom Selection Area Styling */
+        .leaflet-draw-shape {
+            background-color: rgba(255, 82, 82, 0.15) !important;
+            border: 2px dashed #ff5252 !important;
+            pointer-events: none;
+        }
+        
+        /* Progress Bar */
+        .progress-container {
+            width: 100%;
+            background-color: #e2e8f0;
+            border-radius: 9999px;
+            height: 8px;
+            overflow: hidden;
+            margin-top: 12px;
+            display: none;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #000;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -64,7 +88,7 @@
                     </div>
                     <div>
                         <h1 class="text-xl font-extrabold text-black leading-tight">Studio Print</h1>
-                        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Vector A4 B&W</p>
+                        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">A4 Vertical • 300 DPI</p>
                     </div>
                 </div>
 
@@ -102,27 +126,33 @@
 
                 <!-- Selection Area -->
                 <section>
-                    <h2 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Selección</h2>
+                    <h2 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Zona a Enmarcar</h2>
                     <div class="grid grid-cols-2 gap-3">
-                        <button onclick="activateDrawTool()" class="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-black hover:bg-slate-50 transition-all group">
-                            <svg class="w-6 h-6 text-slate-400 group-hover:text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                            <span class="text-[10px] font-bold uppercase text-slate-500 group-hover:text-black">Dibujar Zona</span>
+                        <button onclick="activateDrawTool()" class="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-red-400 hover:bg-red-50 transition-all group">
+                            <svg class="w-6 h-6 text-slate-400 group-hover:text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            <span class="text-[10px] font-bold uppercase text-slate-500 group-hover:text-red-600">Dibujar Recorte</span>
                         </button>
-                        <button onclick="clearSelection()" class="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-red-500 hover:bg-red-50 transition-all group">
-                            <svg class="w-6 h-6 text-slate-400 group-hover:text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
-                            <span class="text-[10px] font-bold uppercase text-slate-500 group-hover:text-red-500">Limpiar</span>
+                        <button onclick="clearSelection()" class="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-black hover:bg-slate-100 transition-all group">
+                            <svg class="w-6 h-6 text-slate-400 group-hover:text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                            <span class="text-[10px] font-bold uppercase text-slate-500 group-hover:text-black">Limpiar</span>
                         </button>
                     </div>
+                    <p class="text-[10px] text-slate-400 mt-3 font-medium leading-tight">El área seleccionada se verá tenue y coloreada para diferenciarla del mapa.</p>
                 </section>
             </div>
 
             <!-- Export Action -->
             <div class="p-8 border-t border-slate-100 bg-white z-10">
-                <button id="exportBtn" onclick="generateSVG()" class="w-full py-5 bg-black hover:bg-slate-800 text-white font-black rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm group">
-                    <span id="btnText">Descargar A4</span>
-                    <div id="btnLoader" class="loader hidden w-4 h-4 border-2 border-white/30 border-t-white"></div>
-                </button>
-                <p class="text-[10px] text-center text-slate-400 mt-3 font-bold uppercase">Formato SVG • A4 Vertical • Centrado</p>
+                <div id="exportContainer">
+                    <button id="exportBtn" onclick="generatePDF()" class="w-full py-5 bg-black hover:bg-slate-800 text-white font-black rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm group">
+                        <span id="btnText">Descargar PDF (A4)</span>
+                        <div id="btnLoader" class="loader hidden w-4 h-4 border-2 border-white/30 border-t-white"></div>
+                    </button>
+                    <div class="progress-container" id="progressContainer">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <p id="statusText" class="text-[10px] text-center text-slate-400 mt-3 font-bold uppercase">Listo para exportar</p>
+                </div>
             </div>
         </aside>
 
@@ -134,7 +164,7 @@
             <div class="absolute top-6 right-6 z-[1001] pointer-events-none">
                 <div class="bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-lg border border-slate-200 flex items-center gap-3">
                     <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Motor Activo</span>
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Motor 300 DPI</span>
                 </div>
             </div>
             
@@ -142,7 +172,7 @@
             <div id="loadingOverlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-[2000] flex flex-col items-center justify-center hidden">
                 <div class="loader mb-4 w-8 h-8"></div>
                 <h3 class="text-lg font-serif font-bold text-slate-800">Procesando Mapa</h3>
-                <p class="text-sm text-slate-500 font-medium mt-1">Obteniendo datos vectoriales...</p>
+                <p class="text-sm text-slate-500 font-medium mt-1" id="overlayStatus">Iniciando carga por bloques...</p>
             </div>
         </main>
     </div>
@@ -176,6 +206,14 @@
             drawnItems = new L.FeatureGroup();
             map.addLayer(drawnItems);
 
+            const customShapeOptions = {
+                color: '#ff5252',
+                weight: 2,
+                fillColor: '#ff5252',
+                fillOpacity: 0.15,
+                dashArray: '5, 5',
+            };
+
             drawControl = new L.Control.Draw({
                 draw: {
                     polygon: false,
@@ -184,7 +222,7 @@
                     marker: false,
                     polyline: false,
                     rectangle: {
-                        shapeOptions: { color: "#000", weight: 2 }
+                        shapeOptions: customShapeOptions
                     }
                 },
                 edit: {
@@ -198,6 +236,7 @@
                 drawnItems.clearLayers(); 
                 drawnItems.addLayer(layer);
                 map.removeControl(drawControl); 
+                layer.setStyle(customShapeOptions);
                 const bounds = layer.getBounds();
                 fetchData(bounds);
             });
@@ -230,42 +269,91 @@
             }
         }
 
-        // --- FETCH OSM DATA ---
+        // --- FETCH OSM DATA (GRID STRATEGY) ---
         async function fetchData(bounds) {
             showLoading(true);
             drawnItems.clearLayers();
+            updateStatus("Analizando área y dividiendo en bloques...", 0);
             
             const south = bounds.getSouth();
             const west = bounds.getWest();
             const north = bounds.getNorth();
             const east = bounds.getEast();
+            
+            // Grid Size: 0.015 degrees is approx 1.5km at this latitude. 
+            // Good balance between API limit and request count.
+            const gridSize = 0.015; 
 
-            const query = `
-                [out:json][timeout:60];
-                (
-                  way["highway"](${south},${west},${north},${east});
-                  relation["highway"](${south},${west},${north},${east});
-                  way["building"](${south},${west},${north},${east});
-                  way["waterway"](${south},${west},${north},${east});
-                  way["natural"="water"](${south},${west},${north},${east});
-                );
-                out geom;
-            `;
+            const lats = [];
+            const lons = [];
+            
+            for(let lat = south; lat < north; lat += gridSize) lats.push(lat);
+            for(let lon = west; lon < east; lon += gridSize) lons.push(lon);
 
-            try {
-                const res = await fetch('https://overpass-api.de/api/interpreter', {
-                    method: 'POST',
-                    body: query
-                });
-                const data = await res.json();
-                currentData = osmtogeojson(data); 
-                updateMapDisplay();
-            } catch (err) {
-                console.error("Overpass Error:", err);
-                alert("Error al cargar datos. El área puede ser demasiado grande.");
-            } finally {
-                showLoading(false);
+            let allFeatures = [];
+            let totalRequests = lats.length * lons.length;
+            let completedRequests = 0;
+
+            for (let i = 0; i < lats.length; i++) {
+                for (let j = 0; j < lons.length; j++) {
+                    const s = lats[i];
+                    const w = lons[j];
+                    const n = Math.min(s + gridSize, north);
+                    const e = Math.min(w + gridSize, east);
+
+                    // Overpass Query for a smaller cell
+                    const query = `
+                        [out:json][timeout:25];
+                        (
+                          way["highway"](${s},${w},${n},${e});
+                          relation["highway"](${s},${w},${n},${e});
+                          way["building"](${s},${w},${n},${e});
+                          way["waterway"](${s},${w},${n},${e});
+                          way["natural"="water"](${s},${w},${n},${e});
+                        );
+                        out geom;
+                    `;
+                    
+                    try {
+                        const res = await fetch('https://overpass-api.de/api/interpreter', {
+                            method: 'POST',
+                            body: query
+                        });
+                        const data = await res.json();
+                        
+                        // Convert and append features
+                        if(data.elements && data.elements.length > 0) {
+                            const geoJson = osmtogeojson(data);
+                            // Simple filtering to remove tiny artifacts (noise)
+                            const validFeatures = geoJson.features.filter(f => {
+                                if (f.geometry.type === 'Point') return false;
+                                return true;
+                            });
+                            allFeatures = allFeatures.concat(validFeatures);
+                        }
+                    } catch (err) {
+                        console.warn("Chunk failed", err);
+                    }
+
+                    completedRequests++;
+                    const percent = Math.round((completedRequests / totalRequests) * 50); // First 50% is fetching
+                    updateStatus(`Descargando bloques de datos...`, percent);
+                }
             }
+
+            // Combine results
+            currentData = {
+                type: "FeatureCollection",
+                features: allFeatures
+            };
+
+            updateStatus("Renderizando mapa...", 80);
+            // Allow UI to breathe before heavy render
+            setTimeout(() => {
+                updateMapDisplay();
+                showLoading(false);
+                updateStatus("Mapa listo para editar", 100);
+            }, 100);
         }
 
         function activateDrawTool() {
@@ -284,6 +372,17 @@
             const el = document.getElementById('loadingOverlay');
             if(show) el.classList.remove('hidden');
             else el.classList.add('hidden');
+        }
+
+        function updateStatus(text, percent) {
+            document.getElementById('statusText').textContent = text;
+            document.getElementById('overlayStatus').textContent = text;
+            
+            const pContainer = document.getElementById('progressContainer');
+            const pBar = document.getElementById('progressBar');
+            
+            pContainer.style.display = 'block';
+            pBar.style.width = percent + '%';
         }
 
         function updateMapDisplay() {
@@ -324,23 +423,25 @@
             document.getElementById(id).addEventListener('change', updateMapDisplay);
         });
 
-        // --- EXPORT LOGIC (A4 VERTICAL CENTERED) ---
-        async function generateSVG() {
+        // --- EXPORT LOGIC (A4 PDF HIGH QUALITY) ---
+        async function generatePDF() {
             if (!currentData) {
                 alert("Por favor, busca una ciudad o dibuja un área primero.");
                 return;
             }
 
+            const { jsPDF } = window.jspdf;
             const btnText = document.getElementById('btnText');
             const btnLoader = document.getElementById('btnLoader');
-            btnText.textContent = "Generando...";
+            
+            btnText.textContent = "Generando PDF...";
             btnLoader.classList.remove('hidden');
+            updateStatus("Preparando vectores de alta resolución...", 20);
 
-            // 1. A4 Vertical Dimensions (High Quality ~250 DPI)
-            // A4 is 210mm x 297mm. 
-            // 2000px width is approx 240 DPI. Good balance for print/file size.
-            const canvasWidth = 2000;
-            const canvasHeight = 2828; // 2000 * 1.414 (A4 Aspect Ratio)
+            // 1. A4 Dimensions in points (1pt = 1/72 inch)
+            // A4 is 210mm x 297mm -> approx 595.28pt x 841.89pt
+            const pdfW = 595.28;
+            const pdfH = 841.89;
 
             // 2. Determine Bounds
             let bounds;
@@ -350,7 +451,7 @@
                 bounds = map.getBounds();
             }
 
-            // 3. Calculate Mercator Bounds for the Map Area
+            // 3. Calculate Mercator Bounds
             const toWebMercator = (lat, lon) => {
                 const x = (lon * 20037508.34) / 180;
                 let y = Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) / (Math.PI / 180);
@@ -364,35 +465,26 @@
             const mercW = maxM.x - minM.x;
             const mercH = maxM.y - minM.y;
 
-            // 4. Calculate Scale to Fit Map into A4 with Margins
-            const margin = 100; // px margin
-            const availableW = canvasWidth - (margin * 2);
-            const availableH = canvasHeight - (margin * 2);
+            // 4. Calculate Scale for PDF (A4)
+            const margin = 20; // pt
+            const availableW = pdfW - (margin * 2);
+            const availableH = pdfH - (margin * 2);
 
             const scaleX = availableW / mercW;
             const scaleY = availableH / mercH;
-            
-            // Use the smaller scale to ensure the entire map fits
             const scale = Math.min(scaleX, scaleY);
 
-            // 5. Calculate Map Size in Pixels (for centering)
             const mapW = mercW * scale;
             const mapH = mercH * scale;
 
-            const offsetX = (canvasWidth - mapW) / 2;
-            const offsetY = (canvasHeight - mapH) / 2;
+            const offsetX = (pdfW - mapW) / 2;
+            const offsetY = (pdfH - mapH) / 2;
 
-            // Projection function relative to the Map Group (not Canvas)
             const project = (lat, lon) => {
                 const merc = toWebMercator(lat, lon);
                 const px = (merc.x - minM.x) * scale;
-                const py = height - (merc.y - minM.y) * scale; // Standard flip
-                // Note: We will handle Y flip via the transform group if needed, 
-                // but here let's keep standard Y-down for SVG.
-                // Actually, standard SVG Y increases downwards.
-                // Mercator Y increases upwards (North).
-                // We need to flip Y relative to the bounding box top.
-                return { x: px.toFixed(2), y: (mapH - (merc.y - minM.y) * scale).toFixed(2) }; 
+                const py = mapH - (merc.y - minM.y) * scale; 
+                return { x: px.toFixed(3), y: py.toFixed(3) };
             };
 
             const showStreets = document.getElementById('checkStreets').checked;
@@ -407,10 +499,6 @@
 
             const processLine = (line) => line.map((c, i) => (i === 0 ? 'M' : 'L') + `${project(c[1], c[0]).x},${project(c[1], c[0]).y}`).join(' ');
 
-            // STROKES OPTIMIZED FOR PRINT LEGIBILITY
-            // Base width 2000px -> 1px = 0.04mm (too thin). 
-            // We need ~4-8px for main lines to be visible on paper (0.5mm).
-            
             for (const feature of features) {
                 if (!feature.geometry) continue;
                 const props = feature.properties || {};
@@ -423,81 +511,71 @@
                 if ((props.waterway || props.natural === 'water') && !showWater) continue;
 
                 let style = "";
-                
                 if (props.highway) {
-                    // Thick strokes for print legibility
-                    const widthVal = 7; 
-                    style = `stroke:#000000; stroke-width:${widthVal}; fill:none; stroke-linecap:round; stroke-linejoin:round;`; 
+                    style = `stroke:#1a1a1a; stroke-width:1.2; fill:none; stroke-linecap:round; stroke-linejoin:round;`; 
                 } else if (props.building) {
-                    style = `fill:#FFFFFF; stroke:#000000; stroke-width:2; fill-opacity:1;`;
+                    style = `fill:#f1f5f9; stroke:#475569; stroke-width:0.3; fill-opacity:1;`;
                 } else if (props.waterway || props.natural === 'water') {
-                    style = `fill:#F0F0F0; stroke:#000000; stroke-width:3; fill-opacity:1;`;
-                } else {
-                    continue;
-                }
+                    style = `fill:#e0f2fe; stroke:#0369a1; stroke-width:0.5; fill-opacity:1;`;
+                } else continue;
 
                 if (type === 'LineString') d = processLine(coords);
                 else if (type === 'MultiLineString') d = coords.map(processLine).join(' ');
                 else if (type === 'Polygon') d = coords.map(ring => processLine(ring) + ' Z').join(' ');
                 else if (type === 'MultiPolygon') d = coords.map(poly => poly.map(ring => processLine(ring) + ' Z').join(' ')).join(' ');
 
-                if (d) {
-                    svgContent += `<path d="${d}" style="${style}" />\n`;
-                }
+                if (d) svgContent += `<path d="${d}" style="${style}" />\n`;
 
-                // Labels
-                if (showLabels && props.name) {
-                    if ((props.highway || props.waterway) && (type === 'LineString' || type === 'MultiLineString')) {
-                        let pathD = d;
-                        if (type === 'MultiLineString') pathD = processLine(coords[0]);
-                        const textPathId = `tp_${pathIdCounter++}`;
-                        svgDefs += `<path id="${textPathId}" d="${pathD}" fill="none" stroke="none" />`;
-                        // Larger font for print (16px)
-                        svgContent += `
-                            <text style="paint-order: stroke; stroke: #FFFFFF; stroke-width: 8px; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; fill: #000000; letter-spacing: 0.5px;">
-                                <textPath href="#${textPathId}" startOffset="50%" text-anchor="middle" dominant-baseline="middle">
-                                    ${props.name.toUpperCase()}
-                                </textPath>
-                            </text>\n`;
-                    }
+                if (showLabels && props.name && (props.highway || props.waterway) && (type === 'LineString' || type === 'MultiLineString')) {
+                    let pathD = type === 'MultiLineString' ? processLine(coords[0]) : d;
+                    const textPathId = `tp_${pathIdCounter++}`;
+                    svgDefs += `<path id="${textPathId}" d="${pathD}" fill="none" stroke="none" />`;
+                    svgContent += `<text style="font-family: Arial, sans-serif; font-size: 6px; font-weight: bold; fill: #334155;"><textPath href="#${textPathId}" startOffset="50%" text-anchor="middle">${props.name}</textPath></text>\n`;
                 }
             }
 
-            // 6. Construct SVG with Centering Transform
-            // We place a <g> at offsetX, offsetY with scale=1 (already calculated)
-            // The project() function outputs coordinates 0..mapW, 0..mapH.
-            
-            const svgHeader = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg width="${canvasWidth}" height="${canvasHeight}" viewBox="0 0 ${canvasWidth} ${canvasHeight}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <style>
-      @media print { body { margin: 0; } }
-    </style>
-    ${svgDefs}
-  </defs>
-  <rect width="100%" height="100%" fill="#FFFFFF" />
-  <g transform="translate(${offsetX.toFixed(2)}, ${offsetY.toFixed(2)})">
-    <g id="map_content" transform="scale(1, -1) translate(0, -${mapH.toFixed(2)})">
-      ${svgContent}
-    </g>
-  </g>
-</svg>`;
+            updateStatus("Generando PDF de alta fidelidad...", 70);
 
-            // 7. Download
-            setTimeout(() => {
-                const blob = new Blob([svgHeader], {type: 'image/svg+xml'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `mapa_print_a4_${Date.now()}.svg`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+            // Create temporary SVG for svg2pdf
+            const svgString = `<svg width="${pdfW}" height="${pdfH}" viewBox="0 0 ${pdfW} ${pdfH}" xmlns="http://www.w3.org/2000/svg">
+                <defs>${svgDefs}</defs>
+                <rect width="100%" height="100%" fill="#FFFFFF" />
+                <g transform="translate(${offsetX.toFixed(3)}, ${offsetY.toFixed(3)})">
+                    <g transform="scale(1, -1) translate(0, -${mapH.toFixed(3)})">
+                        ${svgContent}
+                    </g>
+                </g>
+            </svg>`;
 
-                btnText.textContent = "Descargar A4";
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
+            const svgElement = svgDoc.documentElement;
+
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'pt',
+                format: 'a4'
+            });
+
+            try {
+                await pdf.svg(svgElement, {
+                    x: 0,
+                    y: 0,
+                    width: pdfW,
+                    height: pdfH
+                });
+
+                pdf.save(`mapa_pro_a4_${Date.now()}.pdf`);
+                
+                btnText.textContent = "Descargar PDF (A4)";
                 btnLoader.classList.add('hidden');
-            }, 100);
+                updateStatus("PDF generado con éxito", 100);
+            } catch (err) {
+                console.error("Error generating PDF:", err);
+                alert("Hubo un error al generar el PDF. Revisa la consola.");
+                btnText.textContent = "Error";
+                btnLoader.classList.add('hidden');
+            }
         }
     </script>
 </body>
