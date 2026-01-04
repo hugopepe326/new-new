@@ -3,83 +3,18 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GeoExport Studio | Print A4 300DPI</title>
-    <!-- Tailwind CSS -->
+    <title>GeoExport Studio | Fluid Edition</title>
+    
+    <!-- CSS Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Leaflet CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Leaflet Draw CSS & JS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    <!-- OSMTogeojson -->
-    <script src="https://unpkg.com/osmtogeojson@3.0.0-beta.5/osmtogeojson.js"></script>
-    <!-- PDF Export Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- Google Fonts -->
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-    <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            font-family: 'Outfit', sans-serif;
-            background: #ffffff;
-            color: #0f172a;
-            overflow: hidden;
-        }
-        h1, h2, h3, .font-serif { font-family: 'Playfair Display', serif; }
-        
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-
-        .glass {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-right: 1px solid rgba(0,0,0,0.05);
-        }
-
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #000;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* Custom Selection Area Styling */
-        .leaflet-draw-shape {
-            background-color: rgba(255, 82, 82, 0.15) !important;
-            border: 2px dashed #ff5252 !important;
-            pointer-events: none;
-        }
-        
-        /* Progress Bar */
-        .progress-container {
-            width: 100%;
-            background-color: #e2e8f0;
-            border-radius: 9999px;
-            height: 8px;
-            overflow: hidden;
-            margin-top: 12px;
-            display: none;
-        }
-        .progress-bar {
-            height: 100%;
-            background-color: #000;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div id="app" class="flex h-screen w-screen">
         <!-- Sidebar -->
-        <aside class="w-96 h-full glass flex flex-col shadow-2xl z-[1000] transition-all relative">
+        <aside class="w-96 h-full glass flex flex-col shadow-2xl z-[1000] relative">
             <div class="p-8 border-b border-slate-100 bg-white">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="w-10 h-10 bg-black flex items-center justify-center rounded-xl shadow-lg">
@@ -87,7 +22,7 @@
                     </div>
                     <div>
                         <h1 class="text-xl font-extrabold text-black leading-tight">Studio Print</h1>
-                        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">A4 Vertical • 300 DPI</p>
+                        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Fluid Engine • A4 PDF</p>
                     </div>
                 </div>
 
@@ -100,7 +35,6 @@
             </div>
 
             <div class="flex-1 overflow-y-auto p-8 space-y-8">
-                <!-- Filters -->
                 <section>
                     <h2 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Elementos</h2>
                     <div class="space-y-3">
@@ -122,22 +56,6 @@
                         </label>
                     </div>
                 </section>
-
-                <!-- Selection Area -->
-                <section>
-                    <h2 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Zona a Enmarcar</h2>
-                    <div class="grid grid-cols-2 gap-3">
-                        <button onclick="activateDrawTool()" class="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-red-400 hover:bg-red-50 transition-all group">
-                            <svg class="w-6 h-6 text-slate-400 group-hover:text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                            <span class="text-[10px] font-bold uppercase text-slate-500 group-hover:text-red-600">Dibujar Recorte</span>
-                        </button>
-                        <button onclick="clearSelection()" class="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-black hover:bg-slate-100 transition-all group">
-                            <svg class="w-6 h-6 text-slate-400 group-hover:text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
-                            <span class="text-[10px] font-bold uppercase text-slate-500 group-hover:text-black">Limpiar</span>
-                        </button>
-                    </div>
-                    <p class="text-[10px] text-slate-400 mt-3 font-medium leading-tight">El área seleccionada se verá tenue y coloreada para diferenciarla del mapa.</p>
-                </section>
             </div>
 
             <!-- Export Action -->
@@ -150,419 +68,32 @@
                     <div class="progress-container" id="progressContainer">
                         <div class="progress-bar" id="progressBar"></div>
                     </div>
-                    <p id="statusText" class="text-[10px] text-center text-slate-400 mt-3 font-bold uppercase">Listo para exportar</p>
+                    <p id="statusText" class="text-[10px] text-center text-slate-400 mt-3 font-bold uppercase">Optimizado para impresión</p>
                 </div>
             </div>
         </aside>
 
         <!-- Main Map Area -->
-        <main class="relative flex-1 bg-slate-100">
+        <main class="relative flex-1 bg-slate-100 overflow-hidden">
             <div id="map" class="h-full w-full"></div>
             
-            <!-- Status Overlay -->
-            <div class="absolute top-6 right-6 z-[1001] pointer-events-none">
-                <div class="bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-lg border border-slate-200 flex items-center gap-3">
-                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Motor 300 DPI</span>
-                </div>
-            </div>
-            
-            <!-- Loading Full Overlay -->
+            <!-- Loading Overlay -->
             <div id="loadingOverlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-[2000] flex flex-col items-center justify-center hidden">
                 <div class="loader mb-4 w-8 h-8"></div>
-                <h3 class="text-lg font-serif font-bold text-slate-800">Procesando Mapa</h3>
-                <p class="text-sm text-slate-500 font-medium mt-1" id="overlayStatus">Iniciando carga por bloques...</p>
+                <h3 class="text-lg font-serif font-bold text-slate-800">Cargando Datos</h3>
+                <p class="text-sm text-slate-500 font-medium mt-1" id="overlayStatus">Conectando con el motor vectorial...</p>
             </div>
         </main>
     </div>
 
-    <script>
-        // --- CONFIG ---
-        let map;
-        let geojsonLayer;
-        let drawnItems;
-        let currentData = null; 
-        let drawControl;
-
-        // --- INIT ---
-        window.onload = () => {
-            initMap();
-        };
-
-        function initMap() {
-            map = L.map('map', {
-                zoomControl: false,
-                attributionControl: false
-            }).setView([40.4168, -3.7038], 14); 
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                maxZoom: 19,
-            }).addTo(map);
-
-            L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-            geojsonLayer = L.featureGroup().addTo(map);
-            drawnItems = new L.FeatureGroup();
-            map.addLayer(drawnItems);
-
-            const customShapeOptions = {
-                color: '#ff5252',
-                weight: 2,
-                fillColor: '#ff5252',
-                fillOpacity: 0.15,
-                dashArray: '5, 5',
-            };
-
-            drawControl = new L.Control.Draw({
-                draw: {
-                    polygon: false,
-                    circle: false,
-                    circlemarker: false,
-                    marker: false,
-                    polyline: false,
-                    rectangle: {
-                        shapeOptions: customShapeOptions
-                    }
-                },
-                edit: {
-                    featureGroup: drawnItems,
-                    remove: true
-                }
-            });
-
-            map.on(L.Draw.Event.CREATED, function (e) {
-                const layer = e.layer;
-                drawnItems.clearLayers(); 
-                drawnItems.addLayer(layer);
-                map.removeControl(drawControl); 
-                layer.setStyle(customShapeOptions);
-                const bounds = layer.getBounds();
-                fetchData(bounds);
-            });
-        }
-
-        // --- SEARCH CITY ---
-        async function searchCity() {
-            const query = document.getElementById('cityInput').value;
-            if (!query) return;
-
-            showLoading(true);
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-                const data = await res.json();
-                
-                if (data && data.length > 0) {
-                    const { lat, lon, boundingbox } = data[0];
-                    // Nominatim: [min_lat, max_lat, min_lon, max_lon]
-                    // Leaflet: [[lat, lon], [lat, lon]]
-                    const bounds = L.latLngBounds(
-                        [parseFloat(boundingbox[0]), parseFloat(boundingbox[2])],
-                        [parseFloat(boundingbox[1]), parseFloat(boundingbox[3])]
-                    );
-
-                    map.flyTo([lat, lon], 15, { duration: 1.5 });
-                    await fetchData(bounds);
-                } else {
-                    alert("Ciudad no encontrada.");
-                }
-            } catch (err) {
-                console.error(err);
-                alert("Error al buscar ciudad.");
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // --- FETCH OSM DATA (GRID STRATEGY) ---
-        async function fetchData(bounds) {
-            showLoading(true);
-            drawnItems.clearLayers();
-            updateStatus("Analizando área y dividiendo en bloques...", 0);
-            
-            const south = bounds.getSouth();
-            const west = bounds.getWest();
-            const north = bounds.getNorth();
-            const east = bounds.getEast();
-            
-            // Grid Size: 0.015 degrees is approx 1.5km at this latitude. 
-            // Good balance between API limit and request count.
-            const gridSize = 0.015; 
-
-            const lats = [];
-            const lons = [];
-            
-            for(let lat = south; lat < north; lat += gridSize) lats.push(lat);
-            for(let lon = west; lon < east; lon += gridSize) lons.push(lon);
-
-            let allFeatures = [];
-            let totalRequests = lats.length * lons.length;
-            let completedRequests = 0;
-
-            for (let i = 0; i < lats.length; i++) {
-                for (let j = 0; j < lons.length; j++) {
-                    const s = lats[i];
-                    const w = lons[j];
-                    const n = Math.min(s + gridSize, north);
-                    const e = Math.min(w + gridSize, east);
-
-                    // Overpass Query for a smaller cell
-                    const query = `
-                        [out:json][timeout:25];
-                        (
-                          way["highway"](${s},${w},${n},${e});
-                          relation["highway"](${s},${w},${n},${e});
-                          way["building"](${s},${w},${n},${e});
-                          way["waterway"](${s},${w},${n},${e});
-                          way["natural"="water"](${s},${w},${n},${e});
-                        );
-                        out geom;
-                    `;
-                    
-                    try {
-                        const res = await fetch('https://overpass-api.de/api/interpreter', {
-                            method: 'POST',
-                            body: query
-                        });
-                        const data = await res.json();
-                        
-                        // Convert and append features
-                        if(data.elements && data.elements.length > 0) {
-                            const geoJson = osmtogeojson(data);
-                            // Simple filtering to remove tiny artifacts (noise)
-                            const validFeatures = geoJson.features.filter(f => {
-                                if (f.geometry.type === 'Point') return false;
-                                return true;
-                            });
-                            allFeatures = allFeatures.concat(validFeatures);
-                        }
-                    } catch (err) {
-                        console.warn("Chunk failed", err);
-                    }
-
-                    completedRequests++;
-                    const percent = Math.round((completedRequests / totalRequests) * 50); // First 50% is fetching
-                    updateStatus(`Descargando bloques de datos...`, percent);
-                }
-            }
-
-            // Combine results
-            currentData = {
-                type: "FeatureCollection",
-                features: allFeatures
-            };
-
-            updateStatus("Renderizando mapa...", 80);
-            // Allow UI to breathe before heavy render
-            setTimeout(() => {
-                updateMapDisplay();
-                showLoading(false);
-                updateStatus("Mapa listo para editar", 100);
-            }, 100);
-        }
-
-        function activateDrawTool() {
-            map.addControl(drawControl);
-            new L.Draw.Rectangle(map, drawControl.draw.rectangle).enable();
-        }
-
-        function clearSelection() {
-            drawnItems.clearLayers();
-            geojsonLayer.clearLayers();
-            currentData = null;
-            map.removeControl(drawControl);
-        }
-
-        function showLoading(show) {
-            const el = document.getElementById('loadingOverlay');
-            if(show) el.classList.remove('hidden');
-            else el.classList.add('hidden');
-        }
-
-        function updateStatus(text, percent) {
-            document.getElementById('statusText').textContent = text;
-            document.getElementById('overlayStatus').textContent = text;
-            
-            const pContainer = document.getElementById('progressContainer');
-            const pBar = document.getElementById('progressBar');
-            
-            pContainer.style.display = 'block';
-            pBar.style.width = percent + '%';
-        }
-
-        function updateMapDisplay() {
-            geojsonLayer.clearLayers();
-            if (!currentData) return;
-
-            const showStreets = document.getElementById('checkStreets').checked;
-            const showBuildings = document.getElementById('checkBuildings').checked;
-            const showWater = document.getElementById('checkWater').checked;
-            const showLabels = document.getElementById('checkLabels').checked;
-
-            L.geoJSON(currentData, {
-                style: (feature) => {
-                    const props = feature.properties || {};
-                    if (props.building) return { color: '#000', weight: 0.5, fillOpacity: 0.1, fillColor: '#000' };
-                    if (props.waterway || props.natural === 'water') return { color: '#3b82f6', weight: 2, fillOpacity: 0.4, fillColor: '#bfdbfe' };
-                    if (props.highway) return { color: '#94a3b8', weight: 3 };
-                    return { color: '#ccc', weight: 1 };
-                },
-                filter: (feature) => {
-                    const props = feature.properties || {};
-                    if (props.highway && !showStreets) return false;
-                    if (props.building && !showBuildings) return false;
-                    if ((props.waterway || props.natural === 'water') && !showWater) return false;
-                    return true;
-                },
-                pointToLayer: (feature, latlng) => {
-                    if (showLabels && feature.properties.name) return L.circleMarker(latlng, { radius: 0, opacity: 0 });
-                    return null;
-                },
-                onEachFeature: (feature, layer) => {
-                    if (feature.properties.name) layer.bindTooltip(feature.properties.name, {permanent: false, direction: 'top'});
-                }
-            }).addTo(geojsonLayer);
-        }
-
-        ['checkStreets', 'checkBuildings', 'checkWater', 'checkLabels'].forEach(id => {
-            document.getElementById(id).addEventListener('change', updateMapDisplay);
-        });
-
-        // --- EXPORT LOGIC (A4 PDF OPTIMIZED) ---
-        async function generatePDF() {
-            if (!currentData) {
-                alert("Por favor, busca una ciudad o dibuja un área primero.");
-                return;
-            }
-
-            const { jsPDF } = window.jspdf;
-            const btnText = document.getElementById('btnText');
-            const btnLoader = document.getElementById('btnLoader');
-            
-            btnText.textContent = "Generando PDF...";
-            btnLoader.classList.remove('hidden');
-            updateStatus("Iniciando exportación optimizada...", 10);
-
-            const pdfW = 595.28;
-            const pdfH = 841.89;
-
-            let bounds;
-            if (drawnItems.getLayers().length > 0) bounds = drawnItems.getBounds();
-            else bounds = map.getBounds();
-
-            const toWebMercator = (lat, lon) => {
-                const x = (lon * 20037508.34) / 180;
-                let y = Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) / (Math.PI / 180);
-                y = (y * 20037508.34) / 180;
-                return { x, y };
-            };
-
-            const minM = toWebMercator(bounds.getSouth(), bounds.getWest());
-            const maxM = toWebMercator(bounds.getNorth(), bounds.getEast());
-            const mercW = maxM.x - minM.x;
-            const mercH = maxM.y - minM.y;
-
-            const margin = 20; 
-            const availableW = pdfW - (margin * 2);
-            const availableH = pdfH - (margin * 2);
-            const scale = Math.min(availableW / mercW, availableH / mercH);
-
-            const mapW = mercW * scale;
-            const mapH = mercH * scale;
-            const offsetX = (pdfW - mapW) / 2;
-            const offsetY = (pdfH - mapH) / 2;
-            const baseBottom = pdfH - offsetY;
-
-            // Pre-calculate projection helper
-            const project = (lat, lon) => {
-                const merc = toWebMercator(lat, lon);
-                return {
-                    x: offsetX + (merc.x - minM.x) * scale,
-                    y: baseBottom - (merc.y - minM.y) * scale
-                };
-            };
-
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-            const features = currentData.features;
-
-            const showStreets = document.getElementById('checkStreets').checked;
-            const showBuildings = document.getElementById('checkBuildings').checked;
-            const showWater = document.getElementById('checkWater').checked;
-            const showLabels = document.getElementById('checkLabels').checked;
-
-            // Group features by category in one pass
-            const buckets = { water: [], buildings: [], streets: [], labels: [] };
-            features.forEach(f => {
-                const p = f.properties || {};
-                if (showWater && (p.waterway || p.natural === 'water')) buckets.water.push(f);
-                else if (showBuildings && p.building) buckets.buildings.push(f);
-                else if (showStreets && p.highway) buckets.streets.push(f);
-                if (showLabels && p.name && (p.highway || p.waterway)) buckets.labels.push(f);
-            });
-
-            const drawGroup = (features, style, isClosed) => {
-                if (features.length === 0) return;
-                
-                pdf.setLineWidth(style.width);
-                pdf.setDrawColor(style.stroke);
-                if (style.fill) pdf.setFillColor(style.fill);
-
-                features.forEach(f => {
-                    const type = f.geometry.type;
-                    const coords = f.geometry.coordinates;
-
-                    const drawArray = (arr) => {
-                        if (arr.length < 2) return;
-                        const p1 = project(arr[0][1], arr[0][0]);
-                        pdf.moveTo(p1.x, p1.y);
-                        for (let i = 1; i < arr.length; i++) {
-                            const p = project(arr[i][1], arr[i][0]);
-                            pdf.lineTo(p.x, p.y);
-                        }
-                        if (isClosed) {
-                            pdf.closePath();
-                            if (style.fill) pdf.fillAndStroke();
-                            else pdf.stroke();
-                        } else {
-                            pdf.stroke();
-                        }
-                    };
-
-                    if (type === 'LineString') drawArray(coords);
-                    else if (type === 'MultiLineString') coords.forEach(drawArray);
-                    else if (type === 'Polygon') coords.forEach(drawArray);
-                    else if (type === 'MultiPolygon') coords.forEach(poly => poly.forEach(drawArray));
-                });
-            };
-
-            updateStatus("Renderizando mapa...", 40);
-            
-            // Draw in order
-            drawGroup(buckets.water, { fill: "#e0f2fe", stroke: "#0ea5e9", width: 0.5 }, true);
-            drawGroup(buckets.buildings, { fill: "#f1f5f9", stroke: "#64748b", width: 0.2 }, true);
-            drawGroup(buckets.streets, { stroke: "#1e293b", width: 0.8 }, false);
-
-            if (showLabels && buckets.labels.length > 0) {
-                pdf.setFont("helvetica", "bold");
-                pdf.setFontSize(4);
-                pdf.setTextColor("#475569");
-                buckets.labels.forEach(f => {
-                    const coords = f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates[0];
-                    if (!coords || coords.length === 0) return;
-                    const mid = coords[Math.floor(coords.length / 2)];
-                    const pt = project(mid[1], mid[0]);
-                    if (pt.x > 0 && pt.x < pdfW && pt.y > 0 && pt.y < pdfH) {
-                        pdf.text(f.properties.name, pt.x, pt.y, { align: 'center' });
-                    }
-                });
-            }
-
-            updateStatus("¡Listo!", 100);
-            setTimeout(() => {
-                pdf.save(`mapa_pro_a4_${Date.now()}.pdf`);
-                btnText.textContent = "Descargar PDF (A4)";
-                btnLoader.classList.add('hidden');
-            }, 50);
-        }
-    </script>
+    <!-- JS Source Scripts -->
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/osmtogeojson@3.0.0-beta.5/osmtogeojson.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <!-- Project Scripts -->
+    <script src="js/map.js"></script>
+    <script src="js/export.js"></script>
 </body>
 </html>
