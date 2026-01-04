@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GeoExport Studio | City Map B&W A4</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Draw CSS & JS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <!-- OSMTogeojson -->
+    <script src="https://unpkg.com/osmtogeojson@3.0.0-beta.5/osmtogeojson.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Outfit', sans-serif;
+            background: #ffffff;
+            color: #0f172a;
+            overflow: hidden;
+        }
+        h1, h2, h3, .font-serif { font-family: 'Playfair Display', serif; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-right: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #000;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .leaflet-draw-toolbar a { background-color: white; color: black; border-color: #000; }
+        .leaflet-draw-toolbar a:hover { background-color: #000; color: white; }
+    </style>
+</head>
+<body>
+    <div id="app" class="flex h-screen w-screen">
+        <!-- Sidebar -->
+        <aside class="w-96 h-full glass flex flex-col shadow-2xl z-[1000] transition-all relative">
+            <div class="p-8 border-b border-slate-100 bg-white">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-black flex items-center justify-center rounded-xl shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-extrabold text-black leading-tight">Studio Print</h1>
+                        <p class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Vector A4 B&W</p>
+                    </div>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="relative group">
+                    <input type="text" id="cityInput" placeholder="Escribe una ciudad..." 
+                           class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all placeholder:text-slate-400" />
+                    <button onclick="searchCity()" class="absolute right-2 top-2 bottom-2 bg-black text-white px-5 rounded-lg text-xs font-bold uppercase hover:bg-slate-800 transition-colors">Buscar</button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-8 space-y-8">
+                <!-- Filters -->
+                <section>
+                    <h2 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Elementos</h2>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-black transition-all shadow-sm">
+                            <input type="checkbox" id="checkStreets" checked class="w-5 h-5 rounded border-slate-300 text-black focus:ring-black" />
+                            <span class="text-sm font-bold text-slate-700">Vías y Calles</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-black transition-all shadow-sm">
+                            <input type="checkbox" id="checkBuildings" checked class="w-5 h-5 rounded border-slate-300 text-black focus:ring-black" />
+                            <span class="text-sm font-bold text-slate-700">Edificios</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-black transition-all shadow-sm">
+                            <input type="checkbox" id="checkWater" checked class="w-5 h-5 rounded border-slate-300 text-black focus:ring-black" />
+                            <span class="text-sm font-bold text-slate-700">Agua y Ríos</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:border-black transition-all shadow-sm">
+                            <input type="checkbox" id="checkLabels" checked class="w-5 h-5 rounded border-slate-300 text-black focus:ring-black" />
+                            <span class="text-sm font-bold text-slate-700">Nombres</span>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- Selection Area -->
+                <section>
+                    <h2 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Selección</h2>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="activateDrawTool()" class="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-black hover:bg-slate-50 transition-all group">
+                            <svg class="w-6 h-6 text-slate-400 group-hover:text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            <span class="text-[10px] font-bold uppercase text-slate-500 group-hover:text-black">Dibujar Zona</span>
+                        </button>
+                        <button onclick="clearSelection()" class="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl hover:border-red-500 hover:bg-red-50 transition-all group">
+                            <svg class="w-6 h-6 text-slate-400 group-hover:text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg>
+                            <span class="text-[10px] font-bold uppercase text-slate-500 group-hover:text-red-500">Limpiar</span>
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Export Action -->
+            <div class="p-8 border-t border-slate-100 bg-white z-10">
+                <button id="exportBtn" onclick="generateSVG()" class="w-full py-5 bg-black hover:bg-slate-800 text-white font-black rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm group">
+                    <span id="btnText">Descargar A4</span>
+                    <div id="btnLoader" class="loader hidden w-4 h-4 border-2 border-white/30 border-t-white"></div>
+                </button>
+                <p class="text-[10px] text-center text-slate-400 mt-3 font-bold uppercase">Formato SVG • A4 Vertical • Centrado</p>
+            </div>
+        </aside>
+
+        <!-- Main Map Area -->
+        <main class="relative flex-1 bg-slate-100">
+            <div id="map" class="h-full w-full"></div>
+            
+            <!-- Status Overlay -->
+            <div class="absolute top-6 right-6 z-[1001] pointer-events-none">
+                <div class="bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-lg border border-slate-200 flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">Motor Activo</span>
+                </div>
+            </div>
+            
+            <!-- Loading Full Overlay -->
+            <div id="loadingOverlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-[2000] flex flex-col items-center justify-center hidden">
+                <div class="loader mb-4 w-8 h-8"></div>
+                <h3 class="text-lg font-serif font-bold text-slate-800">Procesando Mapa</h3>
+                <p class="text-sm text-slate-500 font-medium mt-1">Obteniendo datos vectoriales...</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        let map;
+        let geojsonLayer;
+        let drawnItems;
+        let currentData = null; 
+        let drawControl;
+
+        // --- INIT ---
+        window.onload = () => {
+            initMap();
+        };
+
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([40.4168, -3.7038], 14); 
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19,
+            }).addTo(map);
+
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            geojsonLayer = L.featureGroup().addTo(map);
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            drawControl = new L.Control.Draw({
+                draw: {
+                    polygon: false,
+                    circle: false,
+                    circlemarker: false,
+                    marker: false,
+                    polyline: false,
+                    rectangle: {
+                        shapeOptions: { color: "#000", weight: 2 }
+                    }
+                },
+                edit: {
+                    featureGroup: drawnItems,
+                    remove: true
+                }
+            });
+
+            map.on(L.Draw.Event.CREATED, function (e) {
+                const layer = e.layer;
+                drawnItems.clearLayers(); 
+                drawnItems.addLayer(layer);
+                map.removeControl(drawControl); 
+                const bounds = layer.getBounds();
+                fetchData(bounds);
+            });
+        }
+
+        // --- SEARCH CITY ---
+        async function searchCity() {
+            const query = document.getElementById('cityInput').value;
+            if (!query) return;
+
+            showLoading(true);
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                const data = await res.json();
+                
+                if (data && data.length > 0) {
+                    const { lat, lon, boundingbox } = data[0];
+                    const bounds = [[boundingbox[0], boundingbox[3]], [boundingbox[1], boundingbox[2]]];
+
+                    map.flyTo([lat, lon], 15, { duration: 1.5 });
+                    await fetchData(bounds);
+                } else {
+                    alert("Ciudad no encontrada.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error al buscar ciudad.");
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // --- FETCH OSM DATA ---
+        async function fetchData(bounds) {
+            showLoading(true);
+            drawnItems.clearLayers();
+            
+            const south = bounds.getSouth();
+            const west = bounds.getWest();
+            const north = bounds.getNorth();
+            const east = bounds.getEast();
+
+            const query = `
+                [out:json][timeout:60];
+                (
+                  way["highway"](${south},${west},${north},${east});
+                  relation["highway"](${south},${west},${north},${east});
+                  way["building"](${south},${west},${north},${east});
+                  way["waterway"](${south},${west},${north},${east});
+                  way["natural"="water"](${south},${west},${north},${east});
+                );
+                out geom;
+            `;
+
+            try {
+                const res = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                const data = await res.json();
+                currentData = osmtogeojson(data); 
+                updateMapDisplay();
+            } catch (err) {
+                console.error("Overpass Error:", err);
+                alert("Error al cargar datos. El área puede ser demasiado grande.");
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function activateDrawTool() {
+            map.addControl(drawControl);
+            new L.Draw.Rectangle(map, drawControl.draw.rectangle).enable();
+        }
+
+        function clearSelection() {
+            drawnItems.clearLayers();
+            geojsonLayer.clearLayers();
+            currentData = null;
+            map.removeControl(drawControl);
+        }
+
+        function showLoading(show) {
+            const el = document.getElementById('loadingOverlay');
+            if(show) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        }
+
+        function updateMapDisplay() {
+            geojsonLayer.clearLayers();
+            if (!currentData) return;
+
+            const showStreets = document.getElementById('checkStreets').checked;
+            const showBuildings = document.getElementById('checkBuildings').checked;
+            const showWater = document.getElementById('checkWater').checked;
+            const showLabels = document.getElementById('checkLabels').checked;
+
+            L.geoJSON(currentData, {
+                style: (feature) => {
+                    const props = feature.properties || {};
+                    if (props.building) return { color: '#000', weight: 0.5, fillOpacity: 0.1, fillColor: '#000' };
+                    if (props.waterway || props.natural === 'water') return { color: '#3b82f6', weight: 2, fillOpacity: 0.4, fillColor: '#bfdbfe' };
+                    if (props.highway) return { color: '#94a3b8', weight: 3 };
+                    return { color: '#ccc', weight: 1 };
+                },
+                filter: (feature) => {
+                    const props = feature.properties || {};
+                    if (props.highway && !showStreets) return false;
+                    if (props.building && !showBuildings) return false;
+                    if ((props.waterway || props.natural === 'water') && !showWater) return false;
+                    return true;
+                },
+                pointToLayer: (feature, latlng) => {
+                    if (showLabels && feature.properties.name) return L.circleMarker(latlng, { radius: 0, opacity: 0 });
+                    return null;
+                },
+                onEachFeature: (feature, layer) => {
+                    if (feature.properties.name) layer.bindTooltip(feature.properties.name, {permanent: false, direction: 'top'});
+                }
+            }).addTo(geojsonLayer);
+        }
+
+        ['checkStreets', 'checkBuildings', 'checkWater', 'checkLabels'].forEach(id => {
+            document.getElementById(id).addEventListener('change', updateMapDisplay);
+        });
+
+        // --- EXPORT LOGIC (A4 VERTICAL CENTERED) ---
+        async function generateSVG() {
+            if (!currentData) {
+                alert("Por favor, busca una ciudad o dibuja un área primero.");
+                return;
+            }
+
+            const btnText = document.getElementById('btnText');
+            const btnLoader = document.getElementById('btnLoader');
+            btnText.textContent = "Generando...";
+            btnLoader.classList.remove('hidden');
+
+            // 1. A4 Vertical Dimensions (High Quality ~250 DPI)
+            // A4 is 210mm x 297mm. 
+            // 2000px width is approx 240 DPI. Good balance for print/file size.
+            const canvasWidth = 2000;
+            const canvasHeight = 2828; // 2000 * 1.414 (A4 Aspect Ratio)
+
+            // 2. Determine Bounds
+            let bounds;
+            if (drawnItems.getLayers().length > 0) {
+                bounds = drawnItems.getBounds();
+            } else {
+                bounds = map.getBounds();
+            }
+
+            // 3. Calculate Mercator Bounds for the Map Area
+            const toWebMercator = (lat, lon) => {
+                const x = (lon * 20037508.34) / 180;
+                let y = Math.log(Math.tan(((90 + lat) * Math.PI) / 360)) / (Math.PI / 180);
+                y = (y * 20037508.34) / 180;
+                return { x, y };
+            };
+
+            const minM = toWebMercator(bounds.getSouth(), bounds.getWest());
+            const maxM = toWebMercator(bounds.getNorth(), bounds.getEast());
+            
+            const mercW = maxM.x - minM.x;
+            const mercH = maxM.y - minM.y;
+
+            // 4. Calculate Scale to Fit Map into A4 with Margins
+            const margin = 100; // px margin
+            const availableW = canvasWidth - (margin * 2);
+            const availableH = canvasHeight - (margin * 2);
+
+            const scaleX = availableW / mercW;
+            const scaleY = availableH / mercH;
+            
+            // Use the smaller scale to ensure the entire map fits
+            const scale = Math.min(scaleX, scaleY);
+
+            // 5. Calculate Map Size in Pixels (for centering)
+            const mapW = mercW * scale;
+            const mapH = mercH * scale;
+
+            const offsetX = (canvasWidth - mapW) / 2;
+            const offsetY = (canvasHeight - mapH) / 2;
+
+            // Projection function relative to the Map Group (not Canvas)
+            const project = (lat, lon) => {
+                const merc = toWebMercator(lat, lon);
+                const px = (merc.x - minM.x) * scale;
+                const py = height - (merc.y - minM.y) * scale; // Standard flip
+                // Note: We will handle Y flip via the transform group if needed, 
+                // but here let's keep standard Y-down for SVG.
+                // Actually, standard SVG Y increases downwards.
+                // Mercator Y increases upwards (North).
+                // We need to flip Y relative to the bounding box top.
+                return { x: px.toFixed(2), y: (mapH - (merc.y - minM.y) * scale).toFixed(2) }; 
+            };
+
+            const showStreets = document.getElementById('checkStreets').checked;
+            const showBuildings = document.getElementById('checkBuildings').checked;
+            const showWater = document.getElementById('checkWater').checked;
+            const showLabels = document.getElementById('checkLabels').checked;
+
+            const features = currentData.features;
+            let svgContent = '';
+            let svgDefs = '';
+            let pathIdCounter = 0;
+
+            const processLine = (line) => line.map((c, i) => (i === 0 ? 'M' : 'L') + `${project(c[1], c[0]).x},${project(c[1], c[0]).y}`).join(' ');
+
+            // STROKES OPTIMIZED FOR PRINT LEGIBILITY
+            // Base width 2000px -> 1px = 0.04mm (too thin). 
+            // We need ~4-8px for main lines to be visible on paper (0.5mm).
+            
+            for (const feature of features) {
+                if (!feature.geometry) continue;
+                const props = feature.properties || {};
+                const type = feature.geometry.type;
+                const coords = feature.geometry.coordinates;
+                let d = '';
+
+                if (props.highway && !showStreets) continue;
+                if (props.building && !showBuildings) continue;
+                if ((props.waterway || props.natural === 'water') && !showWater) continue;
+
+                let style = "";
+                
+                if (props.highway) {
+                    // Thick strokes for print legibility
+                    const widthVal = 7; 
+                    style = `stroke:#000000; stroke-width:${widthVal}; fill:none; stroke-linecap:round; stroke-linejoin:round;`; 
+                } else if (props.building) {
+                    style = `fill:#FFFFFF; stroke:#000000; stroke-width:2; fill-opacity:1;`;
+                } else if (props.waterway || props.natural === 'water') {
+                    style = `fill:#F0F0F0; stroke:#000000; stroke-width:3; fill-opacity:1;`;
+                } else {
+                    continue;
+                }
+
+                if (type === 'LineString') d = processLine(coords);
+                else if (type === 'MultiLineString') d = coords.map(processLine).join(' ');
+                else if (type === 'Polygon') d = coords.map(ring => processLine(ring) + ' Z').join(' ');
+                else if (type === 'MultiPolygon') d = coords.map(poly => poly.map(ring => processLine(ring) + ' Z').join(' ')).join(' ');
+
+                if (d) {
+                    svgContent += `<path d="${d}" style="${style}" />\n`;
+                }
+
+                // Labels
+                if (showLabels && props.name) {
+                    if ((props.highway || props.waterway) && (type === 'LineString' || type === 'MultiLineString')) {
+                        let pathD = d;
+                        if (type === 'MultiLineString') pathD = processLine(coords[0]);
+                        const textPathId = `tp_${pathIdCounter++}`;
+                        svgDefs += `<path id="${textPathId}" d="${pathD}" fill="none" stroke="none" />`;
+                        // Larger font for print (16px)
+                        svgContent += `
+                            <text style="paint-order: stroke; stroke: #FFFFFF; stroke-width: 8px; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; fill: #000000; letter-spacing: 0.5px;">
+                                <textPath href="#${textPathId}" startOffset="50%" text-anchor="middle" dominant-baseline="middle">
+                                    ${props.name.toUpperCase()}
+                                </textPath>
+                            </text>\n`;
+                    }
+                }
+            }
+
+            // 6. Construct SVG with Centering Transform
+            // We place a <g> at offsetX, offsetY with scale=1 (already calculated)
+            // The project() function outputs coordinates 0..mapW, 0..mapH.
+            
+            const svgHeader = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="${canvasWidth}" height="${canvasHeight}" viewBox="0 0 ${canvasWidth} ${canvasHeight}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @media print { body { margin: 0; } }
+    </style>
+    ${svgDefs}
+  </defs>
+  <rect width="100%" height="100%" fill="#FFFFFF" />
+  <g transform="translate(${offsetX.toFixed(2)}, ${offsetY.toFixed(2)})">
+    <g id="map_content" transform="scale(1, -1) translate(0, -${mapH.toFixed(2)})">
+      ${svgContent}
+    </g>
+  </g>
+</svg>`;
+
+            // 7. Download
+            setTimeout(() => {
+                const blob = new Blob([svgHeader], {type: 'image/svg+xml'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mapa_print_a4_${Date.now()}.svg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                btnText.textContent = "Descargar A4";
+                btnLoader.classList.add('hidden');
+            }, 100);
+        }
+    </script>
+</body>
+</html>
